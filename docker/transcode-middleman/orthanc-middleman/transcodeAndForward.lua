@@ -14,6 +14,7 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
       target:write(dicom)
       target:close()
 
+      print("###### ENTER NN INFERENCE HERE ######")
       -- Compress to JPEG2000 using gdcm
       local compressed = instanceId .. '-compressed.dcm'
       os.execute('gdcmconv -U --j2k ' .. uncompressed .. ' ' .. compressed)
