@@ -20,10 +20,17 @@ end
 
 -- Function to check if both series are complete
 function CheckBothSeriesComplete()
+   print("Checking if both series are complete...")
    for seriesId, data in pairs(seriesTracker['lowdose']) do
-       if seriesTracker['native'][seriesId] and data.count >= 10 and seriesTracker['native'][seriesId].count >= 10 then -- assuming 10 as the required number for each series
-           print("Both series complete for series ID " .. seriesId)
-           return true, seriesId
+       if seriesTracker['native'][seriesId] then
+           if data.count >= 10 and seriesTracker['native'][seriesId].count >= 10 then -- assuming 10 as the required number for each series
+               print("Both series complete for series ID " .. seriesId)
+               return true, seriesId
+           else
+               print("Series not complete: Lowdose count " .. data.count .. ", Native count " .. seriesTracker['native'][seriesId].count)
+           end
+       else
+           print("No corresponding native series found for lowdose series ID " .. seriesId)
        end
    end
    return false
@@ -32,7 +39,7 @@ end
 -- Function to handle the storage of DICOM files into respective directories
 function StoreDICOM(instanceId, seriesType, dicomData)
    local path = '/path/to/store/' .. seriesType .. '/' .. instanceId .. '.dcm'
-   local file = assert(io.open(path, 'wb'))
+   local file = io.open(path, 'wb')
    if file then
        file:write(dicomData)
        file:close()
@@ -47,22 +54,29 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
    if origin['RequestOrigin'] ~= 'Lua' then
        local seriesType = tags.SeriesDescription  -- Adjust this tag based on your actual use case
        local seriesId = tags.SeriesInstanceUID
-       local dicom = RestApiGet('/instances/' .. instanceId .. '/file')
-
        print("Processing instance " .. instanceId .. " of type " .. seriesType)
 
-       -- Store DICOM based on the series type
-       if seriesType == 'lowdose' or seriesType == 'native' then
-           StoreDICOM(instanceId, seriesType, dicom)
-           CheckAndRecordInstance(seriesType, seriesId, instanceId)
+       local dicom = RestApiGet('/instances/' .. instanceId .. '/file')
+       if dicom then
+           print("Successfully retrieved DICOM for instance " .. instanceId)
+           -- Store DICOM based on the series type
+           if seriesType == 'lowdose' or seriesType == 'native' then
+               StoreDICOM(instanceId, seriesType, dicom)
+               CheckAndRecordInstance(seriesType, seriesId, instanceId)
+           else
+               print("Series type " .. seriesType .. " is not part of the tracking process.")
+           end
+           -- Check if both series are complete
+           local complete, completeSeriesId = CheckBothSeriesComplete()
+           if complete then
+               print("Triggering inference for complete series ID " .. completeSeriesId)
+               TriggerInference('/path/to/store/lowdose/', '/path/to/store/native/', completeSeriesId)
+           end
+       else
+           print("Failed to retrieve DICOM for instance " .. instanceId)
        end
-
-       -- Check if both series are complete
-       local complete, completeSeriesId = CheckBothSeriesComplete()
-       if complete then
-           print("Triggering inference for complete series ID " .. completeSeriesId)
-           TriggerInference('/path/to/store/lowdose/', '/path/to/store/native/', completeSeriesId)
-       end
+   else
+       print("Skipping processing for internal Lua-originated request.")
    end
 end
 
