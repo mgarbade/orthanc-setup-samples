@@ -1,46 +1,76 @@
--- This sample shows how to use Orthanc to compress on-the-fly any
--- incoming DICOM file, as a JPEG2k file.
+-- Global tables to track the received instances for each series
+seriesTracker = {
+   ['lowdose'] = {},
+   ['native'] = {}
+}
+
+-- Function to check and record each instance received
+function CheckAndRecordInstance(seriesType, seriesId, instanceId)
+   if seriesTracker[seriesType] then
+       if not seriesTracker[seriesType][seriesId] then
+           seriesTracker[seriesType][seriesId] = { count = 0 }
+           print("Initializing tracking for " .. seriesType .. " series with ID " .. seriesId)
+       end
+       seriesTracker[seriesType][seriesId].count = seriesTracker[seriesType][seriesId].count + 1
+       print("Received instance " .. instanceId .. " for series " .. seriesId .. "; count now " .. seriesTracker[seriesType][seriesId].count)
+   else
+       print("Received series type " .. seriesType .. " is not being tracked.")
+   end
+end
+
+-- Function to check if both series are complete
+function CheckBothSeriesComplete()
+   for seriesId, data in pairs(seriesTracker['lowdose']) do
+       if seriesTracker['native'][seriesId] and data.count >= 10 and seriesTracker['native'][seriesId].count >= 10 then -- assuming 10 as the required number for each series
+           print("Both series complete for series ID " .. seriesId)
+           return true, seriesId
+       end
+   end
+   return false
+end
+
+-- Function to handle the storage of DICOM files into respective directories
+function StoreDICOM(instanceId, seriesType, dicomData)
+   local path = '/path/to/store/' .. seriesType .. '/' .. instanceId .. '.dcm'
+   local file = assert(io.open(path, 'wb'))
+   if file then
+       file:write(dicomData)
+       file:close()
+       print("Stored DICOM file at " .. path)
+   else
+       print("Failed to open file for writing at " .. path)
+   end
+end
 
 function OnStoredInstance(instanceId, tags, metadata, origin)
-   -- Do not compress twice the same file
+   -- Avoid processing if it originates from Lua itself to prevent infinite loops
    if origin['RequestOrigin'] ~= 'Lua' then
+       local seriesType = tags.SeriesDescription  -- Adjust this tag based on your actual use case
+       local seriesId = tags.SeriesInstanceUID
+       local dicom = RestApiGet('/instances/' .. instanceId .. '/file')
 
-      -- Retrieve the incoming DICOM instance from Orthanc
-      local dicom = RestApiGet('/instances/' .. instanceId .. '/file')
+       print("Processing instance " .. instanceId .. " of type " .. seriesType)
 
-      -- Write the DICOM content to some temporary file
-      local uncompressed = instanceId .. '-uncompressed.dcm'
-      local target = assert(io.open(uncompressed, 'wb'))
-      target:write(dicom)
-      target:close()
+       -- Store DICOM based on the series type
+       if seriesType == 'lowdose' or seriesType == 'native' then
+           StoreDICOM(instanceId, seriesType, dicom)
+           CheckAndRecordInstance(seriesType, seriesId, instanceId)
+       end
 
-      print("###### ENTER NN INFERENCE HERE ######")
-      -- Compress to JPEG2000 using gdcm
-      local compressed = instanceId .. '-compressed.dcm'
-      os.execute('gdcmconv -U --j2k ' .. uncompressed .. ' ' .. compressed)
-
-      -- Generate a new SOPInstanceUID for the JPEG2000 file, as
-      -- gdcmconv does not do this by itself
-      os.execute('dcmodify --no-backup -gin ' .. compressed)
-
-      -- Read the JPEG2000 file
-      local source = assert(io.open(compressed, 'rb'))
-      local jpeg2k = source:read("*all")
-      source:close()
-
-      -- Upload the JPEG2000 file and remove the uncompressed file
-      local jpeg2kInstance = ParseJson(RestApiPost('/instances', jpeg2k))
-      RestApiDelete('/instances/' .. instanceId)
-
-      -- Remove the temporary DICOM files
-      os.remove(uncompressed)
-      os.remove(compressed)
-
-      print(instanceId)
-      PrintRecursive(jpeg2kInstance)
-      print(jpeg2kInstance['ID'])
-      -- forward to the PACS and delete
-	  Delete(SendToModality(jpeg2kInstance['ID'], 'pacs'))
-
+       -- Check if both series are complete
+       local complete, completeSeriesId = CheckBothSeriesComplete()
+       if complete then
+           print("Triggering inference for complete series ID " .. completeSeriesId)
+           TriggerInference('/path/to/store/lowdose/', '/path/to/store/native/', completeSeriesId)
+       end
    end
+end
+
+-- Function to simulate the neural network inference
+function TriggerInference(lowdosePath, nativePath, seriesId)
+   local lowdoseFullPath = lowdosePath .. seriesId .. '/'
+   local nativeFullPath = nativePath .. seriesId .. '/'
+   print("Simulating neural network inference with command: python3 run_inference.py " .. lowdoseFullPath .. " " .. nativeFullPath)
+   -- Use this line to simulate command execution without running a real script
+   os.execute("echo 'Simulating inference for lowdose path: " .. lowdoseFullPath .. " and native path: " .. nativeFullPath .. "'")
 end
