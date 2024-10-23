@@ -54,18 +54,37 @@ function normalizeSeriesDescription(description)
 end
 
 
- -- Function to handle the storage of DICOM files into respective directories
- function StoreDICOM(instanceId, seriesType, dicomData)
-    local path = '/path/to/store/' .. seriesType .. '/' .. instanceId .. '.dcm'
-    local file = io.open(path, 'wb')
+function ensureDirectoryExists(dir)
+    -- Debug print to indicate the directory check/creation attempt
+    print("Ensuring directory exists: " .. dir)
+    
+    -- Use os.execute to create the directory if it does not exist
+    local result = os.execute("mkdir -p " .. dir)
+    
+    -- Print the result of the directory creation attempt
+    if result then
+        print("Directory ensured: " .. dir)
+    else
+        print("Failed to create directory: " .. dir)
+    end
+end
+
+
+-- Function to handle the storage of DICOM files into respective directories
+function StoreDICOM(instanceId, seriesType, dicomData)
+    local dirPath = '/path/to/store/' .. seriesType
+    ensureDirectoryExists(dirPath)
+    
+    local filePath = dirPath .. '/' .. instanceId .. '.dcm'
+    local file = io.open(filePath, 'wb')
     if file then
         file:write(dicomData)
         file:close()
-        print("Stored DICOM file at " .. path)
+        print("Stored DICOM file at " .. filePath)
     else
-        print("Failed to open file for writing at " .. path)
+        print("Failed to open file for writing at " .. filePath)
     end
- end
+end
  
  function OnStoredInstance(instanceId, tags, metadata, origin)
     -- Avoid processing if it originates from Lua itself to prevent infinite loops
