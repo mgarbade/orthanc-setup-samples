@@ -71,8 +71,8 @@ end
 
 
 -- Function to handle the storage of DICOM files into respective directories
-function StoreDICOM(instanceId, seriesType, dicomData)
-    local dirPath = '/path/to/store/' .. seriesType
+function StoreDICOM(studyId, instanceId, seriesType, dicomData)
+    local dirPath = '/path/to/store/' .. studyId .. "/" .. seriesType
     ensureDirectoryExists(dirPath)
     
     local filePath = dirPath .. '/' .. instanceId .. '.dcm'
@@ -89,9 +89,9 @@ end
  function OnStoredInstance(instanceId, tags, metadata, origin)
     -- Avoid processing if it originates from Lua itself to prevent infinite loops
     if origin['RequestOrigin'] ~= 'Lua' then
+        local studyId = tags.StudyInstanceUID        
         local seriesDescription = tags.SeriesDescription or ""
         local seriesType = normalizeSeriesDescription(seriesDescription)
-        local seriesId = tags.SeriesInstanceUID
         print("Processing instance " .. instanceId .. " of type " .. seriesType)
  
         local dicom = RestApiGet('/instances/' .. instanceId .. '/file')
@@ -99,8 +99,8 @@ end
             print("Successfully retrieved DICOM for instance " .. instanceId)
             -- Store DICOM based on the series type
             if seriesType == 'lowdose' or seriesType == 'native' then
-                StoreDICOM(instanceId, seriesType, dicom)
-                CheckAndRecordInstance(seriesType, seriesId, instanceId)
+                StoreDICOM(studyId, instanceId, seriesType, dicom)
+                CheckAndRecordInstance(seriesType, studyId, instanceId)
             else
                 print("Series type " .. seriesType .. " is not part of the tracking process.")
             end
