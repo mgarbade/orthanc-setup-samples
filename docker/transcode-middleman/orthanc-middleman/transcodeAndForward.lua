@@ -19,23 +19,44 @@ seriesTracker = {
     end
  end
  
- -- Function to check if both series are complete
- function CheckBothSeriesComplete()
-    print("Checking if both series are complete...")
-    for seriesId, data in pairs(seriesTracker['lowdose']) do
-        if seriesTracker['native'][seriesId] then
-            if data.count >= 10 and seriesTracker['native'][seriesId].count >= 10 then -- assuming 10 as the required number for each series
-                print("Both series complete for series ID " .. seriesId)
-                return true, seriesId
+-- Helper function to count the number of .dcm files in a directory for a specific study
+function countDICOMFiles(studyId, seriesType)
+    local directory = "/path/to/store/" .. studyId .. "/" .. seriesType
+    local handle = io.popen("ls " .. directory .. "/*.dcm 2>/dev/null | wc -l")
+    local result = handle:read("*n")
+    handle:close()
+    return result or 0
+end
+
+-- Function to check if both series are complete by checking file counts in directories
+function CheckBothSeriesComplete()
+    print("Checking if both series are complete (by study)...")
+    for studyId, data in pairs(seriesTracker['lowdose']) do
+        print("Lowdose study ID being checked: " .. studyId)
+        if seriesTracker['native'][studyId] then
+            print("Found corresponding native series for study ID: " .. studyId)
+
+            -- Dynamically determine the number of files for this study
+            local lowdoseCount = countDICOMFiles(studyId, "lowdose")
+            local nativeCount = countDICOMFiles(studyId, "native")
+
+            print("File counts - Lowdose: " .. lowdoseCount .. ", Native: " .. nativeCount)
+
+            -- Ensure both series have the same number of files, and that this count matches
+            if lowdoseCount > 0 and lowdoseCount == nativeCount and
+                data.count == lowdoseCount and seriesTracker['native'][studyId].count == nativeCount then
+                print("Both series complete for study ID " .. studyId)
+                return true, studyId
             else
-                print("Series not complete: Lowdose count " .. data.count .. ", Native count " .. seriesTracker['native'][seriesId].count)
+                print("Series not complete: Lowdose count " .. data.count .. ", Native count " .. seriesTracker['native'][studyId].count)
             end
         else
-            print("No corresponding native series found for lowdose series ID " .. seriesId)
+            print("No corresponding native series found for lowdose study ID " .. studyId)
         end
     end
     return false
- end
+end
+    
 
 
 function trim(s)
