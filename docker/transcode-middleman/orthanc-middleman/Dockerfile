@@ -20,4 +20,4 @@ RUN chown -R orthanc:orthanc /path/to/store \
 
 # Copy configuration and script files
 COPY orthanc.json /etc/orthanc/
-COPY transcodeAndForward.lua /etc/share/orthanc/scripts/
+COPY dicom_series_inference.lua /etc/share/orthanc/scripts/

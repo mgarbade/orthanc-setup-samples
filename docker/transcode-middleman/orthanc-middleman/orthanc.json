@@ -11,6 +11,6 @@
       "modality": ["MODALITY", "orthanc-modality", 4242]
   },
   "LuaScripts" : [
-    "/etc/share/orthanc/scripts/transcodeAndForward.lua"
+    "/etc/share/orthanc/scripts/dicom_series_inference.lua"
   ]
 }
