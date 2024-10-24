@@ -10,8 +10,9 @@ seriesTracker = {
    [NATIVE_DIR] = {}
 }
 
- -- Function to check and record each instance received
- function CheckAndRecordInstance(seriesType, studyId, instanceId)
+
+-- Function to check and record each instance received
+function CheckAndRecordInstance(seriesType, studyId, instanceId)
     if seriesTracker[seriesType] then
         if not seriesTracker[seriesType][studyId] then
             seriesTracker[seriesType][studyId] = { count = 0, instances = {} }
@@ -50,8 +51,8 @@ function CheckBothSeriesComplete()
             print("Found corresponding native series for study ID: " .. studyId)
 
             -- Dynamically determine the number of files for this study
-            local lowdoseCount = countDICOMFiles(studyId, "lowdose")
-            local nativeCount = countDICOMFiles(studyId, "native")
+            local lowdoseCount = countDICOMFiles(studyId, LOWDOSE_DIR)
+            local nativeCount = countDICOMFiles(studyId, NATIVE_DIR)
 
             print("File counts - Lowdose: " .. lowdoseCount .. ", Native: " .. nativeCount)
 
@@ -162,6 +163,7 @@ end
     local nativeFullPath = dirPath .. NATIVE_DIR .. '/'
     print("Simulating neural network inference with command: python3 run_inference.py " .. lowdoseFullPath .. " " .. nativeFullPath)
     os.execute("echo 'Simulating inference for lowdose path: " .. lowdoseFullPath .. " and native path: " .. nativeFullPath .. "'")
+    os.execute("python3 /python/run_inference.py")
 end
 
 
@@ -179,12 +181,13 @@ end
 
  
 function DeleteDirectoriesAfterInference(studyID)
+    print("Deleting folders for lowdose, native and studyID paths...")
     local dirPath = basePath .. studyID .. '/'
     local lowdoseFullPath = dirPath .. LOWDOSE_DIR .. '/'
     local nativeFullPath = dirPath .. NATIVE_DIR .. '/'
-    print("Deleting folders for lowdose and native paths...")
     os.execute("rm -rf '" .. lowdoseFullPath .. "'")
     os.execute("rm -rf '" .. nativeFullPath .. "'")
-    print("Deleted folders for lowdose and native paths.")
+    os.execute("rm -rf '" .. dirPath .. "'")
+    print("Deleted folders for lowdose, native and studyID paths.")
 end
 
