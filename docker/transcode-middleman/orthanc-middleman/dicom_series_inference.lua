@@ -1,8 +1,13 @@
+-- Global variable for the base storage path
+local basePath = '/path/to/store/'
+local LOWDOSE_DIR = 'lowdose'
+local NATIVE_DIR = 'native'
+
 
 -- Global tables to track the received instances for each series
 seriesTracker = {
-   ['lowdose'] = {},
-   ['native'] = {}
+   [LOWDOSE_DIR] = {},
+   [NATIVE_DIR] = {}
 }
 
  -- Function to check and record each instance received
@@ -29,7 +34,7 @@ end
  
 -- Helper function to count the number of .dcm files in a directory for a specific study
 function countDICOMFiles(studyId, seriesType)
-    local directory = "/path/to/store/" .. studyId .. "/" .. seriesType
+    local directory = basePath .. studyId .. "/" .. seriesType
     local handle = io.popen("ls " .. directory .. "/*.dcm 2>/dev/null | wc -l")
     local result = handle:read("*n")
     handle:close()
@@ -39,9 +44,9 @@ end
 -- Function to check if both series are complete by checking file counts in directories
 function CheckBothSeriesComplete()
     print("Checking if both series are complete (by study)...")
-    for studyId, data in pairs(seriesTracker['lowdose']) do
+    for studyId, data in pairs(seriesTracker[LOWDOSE_DIR]) do
         print("Lowdose study ID being checked: " .. studyId)
-        if seriesTracker['native'][studyId] then
+        if seriesTracker[NATIVE_DIR][studyId] then
             print("Found corresponding native series for study ID: " .. studyId)
 
             -- Dynamically determine the number of files for this study
@@ -52,11 +57,11 @@ function CheckBothSeriesComplete()
 
             -- Ensure both series have the same number of files, and that this count matches
             if lowdoseCount > 0 and lowdoseCount == nativeCount and
-                data.count == lowdoseCount and seriesTracker['native'][studyId].count == nativeCount then
+                data.count == lowdoseCount and seriesTracker[NATIVE_DIR][studyId].count == nativeCount then
                 print("Both series complete for study ID " .. studyId)
                 return true, studyId
             else
-                print("Series not complete: Lowdose count " .. data.count .. ", Native count " .. seriesTracker['native'][studyId].count)
+                print("Series not complete: Lowdose count " .. data.count .. ", Native count " .. seriesTracker[NATIVE_DIR][studyId].count)
             end
         else
             print("No corresponding native series found for lowdose study ID " .. studyId)
@@ -75,9 +80,9 @@ end
 function normalizeSeriesDescription(description)
     local lowerDescription = trim(description):lower()
     if lowerDescription:find("nativ") then
-        return 'native'
+        return NATIVE_DIR
     elseif lowerDescription:find("km") and lowerDescription:find("low dose") then
-        return 'lowdose'
+        return LOWDOSE_DIR
     else
         return nil
     end
@@ -102,7 +107,7 @@ end
 
 -- Function to handle the storage of DICOM files into respective directories
 function StoreDICOM(studyId, instanceId, seriesType, dicomData)
-    local dirPath = '/path/to/store/' .. studyId .. "/" .. seriesType
+    local dirPath = basePath .. studyId .. "/" .. seriesType
     ensureDirectoryExists(dirPath)
     
     local filePath = dirPath .. '/' .. instanceId .. '.dcm'
@@ -128,7 +133,7 @@ end
         if dicom then
             print("Successfully retrieved DICOM for instance " .. instanceId)
             -- Store DICOM based on the series type
-            if seriesType == 'lowdose' or seriesType == 'native' then
+            if seriesType == LOWDOSE_DIR or seriesType == NATIVE_DIR then
                 StoreDICOM(studyId, instanceId, seriesType, dicom)
                 CheckAndRecordInstance(seriesType, studyId, instanceId)
             else
@@ -138,7 +143,9 @@ end
             local complete, studyID = CheckBothSeriesComplete()
             if complete then
                 print("Triggering inference for complete series ID " .. studyID)
-                TriggerInference('lowdose/', 'native/', studyID)
+                TriggerInference(studyID)
+                ResetSeriesTracker(studyID)
+                DeleteDirectoriesAfterInference(studyID)
             end
         else
             print("Failed to retrieve DICOM for instance " .. instanceId)
@@ -149,19 +156,35 @@ end
  end
  
  -- Function to simulate the neural network inference
- function TriggerInference(lowdosePath, nativePath, studyID)
-    local dirPath = '/path/to/store/' .. studyID .. '/'
-    local lowdoseFullPath = dirPath .. lowdosePath .. '/'
-    local nativeFullPath = dirPath .. nativePath .. '/'
+ function TriggerInference(studyID)
+    local dirPath = basePath .. studyID .. '/'
+    local lowdoseFullPath = dirPath .. LOWDOSE_DIR .. '/'
+    local nativeFullPath = dirPath .. NATIVE_DIR .. '/'
     print("Simulating neural network inference with command: python3 run_inference.py " .. lowdoseFullPath .. " " .. nativeFullPath)
-    -- Use this line to simulate command execution without running a real script
     os.execute("echo 'Simulating inference for lowdose path: " .. lowdoseFullPath .. " and native path: " .. nativeFullPath .. "'")
+end
 
-    -- Reset seriesTracker for this studyId
-    print("Try clearing series tracking for study ID: " .. studyID)        
-    seriesTracker['lowdose'][studyID] = nil
-    seriesTracker['native'][studyID] = nil
-    print("Cleared series tracking for study ID: " .. studyID)    
- end
+
+function ResetSeriesTracker(studyID)
+    print("Try clearing series tracking for study ID: " .. studyID)
+    if seriesTracker and seriesTracker[LOWDOSE_DIR] and seriesTracker[NATIVE_DIR] then
+        seriesTracker[LOWDOSE_DIR][studyID] = nil
+        seriesTracker[NATIVE_DIR][studyID] = nil
+        print("Cleared series tracking for study ID: " .. studyID)
+    else
+        print("Error: seriesTracker is not properly initialized or study ID does not exist.")
+    end
+end
+
+
  
+function DeleteDirectoriesAfterInference(studyID)
+    local dirPath = basePath .. studyID .. '/'
+    local lowdoseFullPath = dirPath .. LOWDOSE_DIR .. '/'
+    local nativeFullPath = dirPath .. NATIVE_DIR .. '/'
+    print("Deleting folders for lowdose and native paths...")
+    os.execute("rm -rf '" .. lowdoseFullPath .. "'")
+    os.execute("rm -rf '" .. nativeFullPath .. "'")
+    print("Deleted folders for lowdose and native paths.")
+end
 
