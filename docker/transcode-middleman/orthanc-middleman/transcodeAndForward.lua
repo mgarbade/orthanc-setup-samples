@@ -6,18 +6,26 @@ seriesTracker = {
 }
 
  -- Function to check and record each instance received
- function CheckAndRecordInstance(seriesType, seriesId, instanceId)
+ function CheckAndRecordInstance(seriesType, studyId, instanceId)
     if seriesTracker[seriesType] then
-        if not seriesTracker[seriesType][seriesId] then
-            seriesTracker[seriesType][seriesId] = { count = 0 }
-            print("Initializing tracking for " .. seriesType .. " series with ID " .. seriesId)
+        if not seriesTracker[seriesType][studyId] then
+            seriesTracker[seriesType][studyId] = { count = 0, instances = {} }
+            print("Initializing tracking for " .. seriesType .. " study with ID " .. studyId)
         end
-        seriesTracker[seriesType][seriesId].count = seriesTracker[seriesType][seriesId].count + 1
-        print("Received instance " .. instanceId .. " for series " .. seriesId .. "; count now " .. seriesTracker[seriesType][seriesId].count)
+
+        -- Check if this instance has already been counted
+        if not seriesTracker[seriesType][studyId].instances[instanceId] then
+            seriesTracker[seriesType][studyId].count = seriesTracker[seriesType][studyId].count + 1
+            seriesTracker[seriesType][studyId].instances[instanceId] = true
+            print("Received instance " .. instanceId .. " for study " .. studyId .. "; count now " .. seriesTracker[seriesType][studyId].count)
+        else
+            print("Instance " .. instanceId .. " already recorded for study " .. studyId .. ". Skipping.")
+        end
     else
         print("Received series type " .. seriesType .. " is not being tracked.")
     end
- end
+end
+
  
 -- Helper function to count the number of .dcm files in a directory for a specific study
 function countDICOMFiles(studyId, seriesType)
@@ -56,6 +64,7 @@ function CheckBothSeriesComplete()
     end
     return false
 end
+
     
 
 
@@ -146,6 +155,11 @@ end
     print("Simulating neural network inference with command: python3 run_inference.py " .. lowdoseFullPath .. " " .. nativeFullPath)
     -- Use this line to simulate command execution without running a real script
     os.execute("echo 'Simulating inference for lowdose path: " .. lowdoseFullPath .. " and native path: " .. nativeFullPath .. "'")
+
+    -- Reset seriesTracker for this studyId
+    seriesTracker['lowdose'][studyId] = nil
+    seriesTracker['native'][studyId] = nil
+    print("Cleared series tracking for study ID: " .. studyId)    
  end
  
 
