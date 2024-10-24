@@ -158,9 +158,10 @@ end
     os.execute("echo 'Simulating inference for lowdose path: " .. lowdoseFullPath .. " and native path: " .. nativeFullPath .. "'")
 
     -- Reset seriesTracker for this studyId
-    seriesTracker['lowdose'][studyId] = nil
-    seriesTracker['native'][studyId] = nil
-    print("Cleared series tracking for study ID: " .. studyId)    
+    print("Try clearing series tracking for study ID: " .. studyID)        
+    seriesTracker['lowdose'][studyID] = nil
+    seriesTracker['native'][studyID] = nil
+    print("Cleared series tracking for study ID: " .. studyID)    
  end
  
 
