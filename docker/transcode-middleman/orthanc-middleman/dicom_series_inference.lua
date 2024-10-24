@@ -135,10 +135,10 @@ end
                 print("Series type " .. seriesType .. " is not part of the tracking process.")
             end
             -- Check if both series are complete
-            local complete, completeSeriesId = CheckBothSeriesComplete()
+            local complete, studyID = CheckBothSeriesComplete()
             if complete then
-                print("Triggering inference for complete series ID " .. completeSeriesId)
-                TriggerInference('lowdose/', 'native/', completeSeriesId)
+                print("Triggering inference for complete series ID " .. studyID)
+                TriggerInference('lowdose/', 'native/', studyID)
             end
         else
             print("Failed to retrieve DICOM for instance " .. instanceId)
@@ -149,8 +149,8 @@ end
  end
  
  -- Function to simulate the neural network inference
- function TriggerInference(lowdosePath, nativePath, seriesId)
-    local dirPath = '/path/to/store/' .. seriesId .. '/'
+ function TriggerInference(lowdosePath, nativePath, studyID)
+    local dirPath = '/path/to/store/' .. studyID .. '/'
     local lowdoseFullPath = dirPath .. lowdosePath .. '/'
     local nativeFullPath = dirPath .. nativePath .. '/'
     print("Simulating neural network inference with command: python3 run_inference.py " .. lowdoseFullPath .. " " .. nativeFullPath)
