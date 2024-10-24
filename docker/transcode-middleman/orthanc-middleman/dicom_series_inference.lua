@@ -138,7 +138,7 @@ end
             local complete, completeSeriesId = CheckBothSeriesComplete()
             if complete then
                 print("Triggering inference for complete series ID " .. completeSeriesId)
-                TriggerInference('/path/to/store/lowdose/', '/path/to/store/native/', completeSeriesId)
+                TriggerInference('lowdose/', 'native/', completeSeriesId)
             end
         else
             print("Failed to retrieve DICOM for instance " .. instanceId)
@@ -150,8 +150,9 @@ end
  
  -- Function to simulate the neural network inference
  function TriggerInference(lowdosePath, nativePath, seriesId)
-    local lowdoseFullPath = lowdosePath .. seriesId .. '/'
-    local nativeFullPath = nativePath .. seriesId .. '/'
+    local dirPath = '/path/to/store/' .. seriesId .. '/'
+    local lowdoseFullPath = dirPath .. lowdosePath .. '/'
+    local nativeFullPath = dirPath .. nativePath .. '/'
     print("Simulating neural network inference with command: python3 run_inference.py " .. lowdoseFullPath .. " " .. nativeFullPath)
     -- Use this line to simulate command execution without running a real script
     os.execute("echo 'Simulating inference for lowdose path: " .. lowdoseFullPath .. " and native path: " .. nativeFullPath .. "'")
