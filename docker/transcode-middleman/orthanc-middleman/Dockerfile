@@ -21,3 +21,17 @@ RUN chown -R orthanc:orthanc /path/to/store \
 # Copy configuration and script files
 COPY orthanc.json /etc/orthanc/
 COPY dicom_series_inference.lua /etc/share/orthanc/scripts/
+
+
+
+# This example is using a virtual env that is not mandatory when using Docker containers
+# but recommended since python 3.11 and Debian bookworm based images where you get a warning
+# when installing system-wide packages.
+RUN apt-get update && apt install -y python3-venv
+RUN python3 -m venv /.venv
+
+RUN /.venv/bin/pip install pydicom
+ENV PYTHONPATH=/.venv/lib64/python3.11/site-packages/
+
+RUN mkdir /python
+COPY test.py /python/
