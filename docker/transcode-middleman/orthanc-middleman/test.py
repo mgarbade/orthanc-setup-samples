@@ -1,7 +1,4 @@
-print("##############  HEEELLLOOOO FROM PYTHON ###################")
-
-
-
+print("# HELLO FROM PYTHON")
 
 import orthanc
 import json
