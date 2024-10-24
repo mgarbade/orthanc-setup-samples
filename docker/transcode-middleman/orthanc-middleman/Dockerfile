@@ -36,3 +36,4 @@ ENV PYTHONPATH=/.venv/lib64/python3.11/site-packages/
 
 RUN mkdir /python
 COPY test.py /python/
+COPY run_inference.py /python/
